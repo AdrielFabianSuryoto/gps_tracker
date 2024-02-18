@@ -12,32 +12,35 @@ ThingESP8266 thing("adrielfs", "botGpsTracker", "botGpsTracker");
 int RXPin = D2;
 int TXPin = D1;
 int GPSBaud = 9600;
+int buttonState = 0;
+int buzzPin = D0;
 TinyGPSPlus gps;
 SoftwareSerial gpsSerial(TXPin, RXPin);
 char auth[] = "7LZILl2BeVEoDNqmvK5qdpI6C15yMFIg";
 int LED = LED_BUILTIN;
-// unsigned long Millisz = 5000;
-// unsigned long currentMillisz = millis();
+
+
 void setup()
 {
   Serial.begin(9600);
   gpsSerial.begin(GPSBaud);
-
-  thing.SetWiFi("58C", "12345678");
+  thing.SetWiFi("Andromax-M2S-E2C1", "07155201");
   pinMode(LED, OUTPUT);
+  pinMode(buzzPin, OUTPUT);
+  digitalWrite(buzzPin, LOW);
   thing.initDevice();
 
-  Blynk.begin(auth,"58C","12345678");
+  Blynk.begin(auth,"Andromax-M2S-E2C1", "07155201");
+  Blynk.setProperty(V2, "onLabel", "ON");
+  Blynk.virtualWrite(V2, 0); 
+  Blynk.syncVirtual(V2); 
 }
 
 String HandleResponse(String query)
 {
-//if (gps.speed.isValid() == false)
-//{
-  //return "kendaraan anda menjauhi anda";
+
   if(query == "on")
   {
-     
   digitalWrite(LED, 0);
   return "gps tracker on!";
   }
@@ -50,21 +53,9 @@ String HandleResponse(String query)
     
     return "https://www.google.com/maps?q=" + String(gps.location.lat(), 6) + "," + String(gps.location.lng(), 6);
   }
-
-  else if (query == "led off") {
-    
-    return "Done: LED Turned OFF";
-  }
-
-  else if (query == "led status")
-  {
-    return digitalRead(LED) ? "LED is OFF" : "LED is ON";
-  }
- 
-//}
 else
 {
-  return "kendaraan anda masih di tempat!";
+  return "invalid command!";
 }
 
 }
@@ -76,21 +67,12 @@ void loop()
   {
     if (gps.encode(gpsSerial.read()))
     {
-      //displayInfo(); // Tampilkan informasi GPS di Serial Monitor
-      sendToBlynk(); // Kirim data ke Blynk
+      //displayInfo(); 
+      sendToBlynk(); 
     }
   }
 
-  // if (millis() > Millisz && gps.charsProcessed() < 10)
-  // {
-  //   Serial.println("No GPS detected");
-  //   while (true)
-  //   {yield();}
-  // }
-  //yield();
   Blynk.run();
-  
-
   
 }
 
@@ -106,7 +88,6 @@ void displayInfo()
     Serial.println(gps.speed.kmph());
     Serial.print("Satellite: ");
     Serial.println(gps.satellites.value()); 
-    //Serial.print();
   }
   else
   {
@@ -122,10 +103,9 @@ void sendToBlynk()
 {
   if (gps.satellites.isValid())
   {
-    // Kirim data ke aplikasi Blynk
     Blynk.virtualWrite(V0, gps.location.lat(), 6); 
     Blynk.virtualWrite(V1, gps.location.lng(), 6); 
-    Blynk.virtualWrite(V2, gps.speed.kmph());     
+    Blynk.virtualWrite(V4, gps.speed.kmph());     
     Blynk.virtualWrite(V3, gps.satellites.value());
 
   }
@@ -133,8 +113,22 @@ void sendToBlynk()
   {
     Blynk.virtualWrite(V0, gps.location.lat(), 6); 
     Blynk.virtualWrite(V1, gps.location.lng(), 6);
-    Blynk.virtualWrite(V2, gps.speed.kmph()); 
+    Blynk.virtualWrite(V4, gps.speed.kmph()); 
     Blynk.virtualWrite(V3, gps.satellites.value());   
 
+  }
+}
+
+BLYNK_WRITE(V2) {
+  buttonState = param.asInt();
+  
+  if (buttonState == 1) {
+    // Button pressed
+    Serial.println("buzzer off");
+    digitalWrite(buzzPin, LOW); 
+  } else {
+    // Button released
+    Serial.println("buzzer on");
+    digitalWrite(buzzPin, HIGH);
   }
 }
